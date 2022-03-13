@@ -1,9 +1,6 @@
 use super::config::Config;
 use proc_macro2::Span;
-use syn::{
-    parse::Result,
-    spanned::Spanned,
-};
+use syn::{MetaNameValue, parse::Result, spanned::Spanned};
 
 /// Raises an unsupported argument compile time error.
 fn unsupported_argument<T>(arg: T) -> syn::Error
@@ -105,7 +102,22 @@ impl Config {
             invalid => {
                 return Err(format_err!(
                 invalid,
-                "encountered invalid value argument for #[bitfield] `filled` parameter",
+                "encountered invalid value argument for #[bitfield] `filled` parameter, expected `bool`",
+            ))
+            }
+        }
+        Ok(())
+    }
+
+    fn feed_packed_param(&mut self, name_value: MetaNameValue) -> Result<()> {
+        match &name_value.lit {
+            syn::Lit::Bool(lit_bool) => {
+                self.packed(lit_bool.value, name_value.span())?;
+            }
+            invalid => {
+                return Err(format_err!(
+                invalid,
+                "encountered invalid value argument for #[bitfield] `packed` parameter, expected `bool`",
             ))
             }
         }
@@ -132,6 +144,8 @@ impl Config {
                                 self.feed_bits_param(name_value)?;
                             } else if name_value.path.is_ident("filled") {
                                 self.feed_filled_param(name_value)?;
+                            } else if name_value.path.is_ident("packed"){
+                                self.feed_packed_param(name_value)?;
                             } else {
                                 return Err(unsupported_argument(name_value))
                             }

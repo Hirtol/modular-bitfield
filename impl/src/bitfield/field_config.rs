@@ -45,6 +45,10 @@ impl SkipWhich {
     pub fn skip_setters(self) -> bool {
         matches!(self, Self::All | Self::Setters)
     }
+
+    pub fn skip_all(self) -> bool {
+        matches!(self, Self::All)
+    }
 }
 
 impl FieldConfig {
@@ -153,6 +157,14 @@ impl FieldConfig {
             .as_ref()
             .map(|config| config.value)
             .map(SkipWhich::skip_getters)
+            .unwrap_or(false)
+    }
+
+    pub fn skip_all(&self) -> bool {
+        self.skip
+            .as_ref()
+            .map(|config| config.value)
+            .map(SkipWhich::skip_all)
             .unwrap_or(false)
     }
 }

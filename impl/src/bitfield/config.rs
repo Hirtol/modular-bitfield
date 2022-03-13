@@ -16,6 +16,7 @@ pub struct Config {
     pub bytes: Option<ConfigValue<usize>>,
     pub bits: Option<ConfigValue<usize>>,
     pub filled: Option<ConfigValue<bool>>,
+    pub packed: Option<ConfigValue<bool>>,
     pub repr: Option<ConfigValue<ReprKind>>,
     pub derive_debug: Option<ConfigValue<()>>,
     pub derive_specifier: Option<ConfigValue<()>>,
@@ -77,6 +78,14 @@ impl Config {
     /// Returns the value of the `filled` parameter if provided and otherwise `true`.
     pub fn filled_enabled(&self) -> bool {
         self.filled
+            .as_ref()
+            .map(|config| config.value)
+            .unwrap_or(true)
+    }
+
+    /// Returns the value of the `packed` parameter if provided and otherwise `true`.
+    pub fn packed_enabled(&self) -> bool {
+        self.packed
             .as_ref()
             .map(|config| config.value)
             .unwrap_or(true)
@@ -230,6 +239,21 @@ impl Config {
                 return Err(Self::raise_duplicate_error("filled", span, previous))
             }
             None => self.filled = Some(ConfigValue::new(value, span)),
+        }
+        Ok(())
+    }
+
+    /// Sets the `packed: bool` #[bitfield] parameter to the given value.
+    ///
+    /// # Errors
+    ///
+    /// If the specifier has already been set.
+    pub fn packed(&mut self, value: bool, span: Span) -> Result<()> {
+        match &self.packed {
+            Some(previous) => {
+                return Err(Self::raise_duplicate_error("packed", span, previous))
+            }
+            None => self.packed = Some(ConfigValue::new(value, span)),
         }
         Ok(())
     }
