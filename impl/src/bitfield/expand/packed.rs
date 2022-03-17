@@ -196,7 +196,7 @@ impl BitfieldStruct {
                 where
                     [(); #actual_bits]: ::modular_bitfield::private::#trait_check_ident,
                 {
-                    #[inline]
+                    #[inline(always)]
                     fn from(__bf_prim: #prim) -> Self {
                         Self { bytes: <#prim>::to_le_bytes(__bf_prim) }
                     }
@@ -206,7 +206,7 @@ impl BitfieldStruct {
                 where
                     [(); #actual_bits]: ::modular_bitfield::private::#trait_check_ident,
                 {
-                    #[inline]
+                    #[inline(always)]
                     fn from(__bf_bitfield: #ident) -> Self {
                         <Self>::from_le_bytes(__bf_bitfield.bytes)
                     }
@@ -225,7 +225,7 @@ impl BitfieldStruct {
             true => {
                 quote_spanned!(span=>
                     /// Converts the given bytes directly into the bitfield struct.
-                    #[inline]
+                    #[inline(always)]
                     #[allow(clippy::identity_op)]
                     pub const fn from_le_bytes(bytes: [u8; #next_divisible_by_8 / 8usize]) -> Self {
                         Self { bytes }
@@ -261,7 +261,7 @@ impl BitfieldStruct {
                 /// Returns a little endian based layout.
                 /// The returned byte array is laid out in the same way as described
                 /// [here](https://docs.rs/modular-bitfield/#generated-structure).
-                #[inline]
+                #[inline(always)]
                 #[allow(clippy::identity_op)]
                 pub const fn to_le_bytes(self) -> [u8; #next_divisible_by_8 / 8usize] {
                     self.bytes
@@ -284,7 +284,7 @@ impl BitfieldStruct {
                 /// # Layout
                 ///
                 /// This is based on Little Endian indexing, aka, least significant byte is at index 0.
-                #[inline]
+                #[inline(always)]
                 #[allow(clippy::identity_op)]
                 pub fn update_byte_le(&mut self, byte: usize, value: u8) {
                     self.bytes[byte] = value;
@@ -295,7 +295,7 @@ impl BitfieldStruct {
                 /// # Layout
                 ///
                 /// This is based on Big Endian indexing, aka, most significant byte is at index 0.
-                #[inline]
+                #[inline(always)]
                 #[allow(clippy::identity_op)]
                 pub fn update_byte_be(&mut self, byte: usize, value: u8) {
                     self.bytes[#next_divisible_by_8 / 8usize - 1 - byte] = value;

@@ -22,7 +22,6 @@ impl BitfieldStruct {
         let byte_update_impls = self.generate_byte_update_impls_unpacked(config);
         let getters_and_setters = self.generate_getters_and_setters_unpacked(config);
         let from_into_impl = self.generate_to_from_repr_unpacked(config);
-        // let bytes_check = self.expand_optional_bytes_check(config);
         // let repr_impls_and_checks = self.expand_repr_from_impls_and_checks(config);
 
         quote_spanned!(span=>
@@ -78,7 +77,7 @@ impl BitfieldStruct {
                     /// Converts the given bytes directly into the bitfield struct.
                     ///
                     /// Expects Little Endian byte order.
-                    #[inline]
+                    #[inline(always)]
                     #[allow(clippy::identity_op)]
                     pub const fn from_le_bytes(bytes: [u8; #next_divisible_by_8 / 8usize]) -> Self {
                         let value = #repr_type::from_le_bytes(bytes);
@@ -119,7 +118,7 @@ impl BitfieldStruct {
                 /// Returns a little endian based layout.
                 /// The returned byte array is laid out in the same way as described
                 /// [here](https://docs.rs/modular-bitfield/#generated-structure).
-                #[inline]
+                #[inline(always)]
                 #[allow(clippy::identity_op)]
                 pub const fn to_le_bytes(self) -> [u8; #next_divisible_by_8 / 8usize] {
                     let value: #repr_type = self.into();
@@ -300,7 +299,7 @@ impl BitfieldStruct {
         let getters = quote_spanned!(span=>
             #[doc = #getter_docs]
             #[allow(dead_code)]
-            #[inline]
+            #[inline(always)]
             #( #retained_attrs )*
             #vis const fn #get_ident(&self) -> <#ty as ::modular_bitfield::Specifier>::InOut {
                 self.#real_ident
@@ -350,7 +349,7 @@ impl BitfieldStruct {
 
         let setters = quote_spanned!(span=>
             #[doc = #with_docs]
-            #[inline]
+            #[inline(always)]
             #[allow(dead_code)]
             #( #retained_attrs )*
             #vis fn #with_ident(
@@ -362,7 +361,7 @@ impl BitfieldStruct {
             }
 
             #[doc = #setter_docs]
-            #[inline]
+            #[inline(always)]
             #[allow(dead_code)]
             #( #retained_attrs )*
             #vis fn #set_ident(&mut self, new_val: <#ty as ::modular_bitfield::Specifier>::InOut) {
