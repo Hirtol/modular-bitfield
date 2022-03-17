@@ -18,8 +18,8 @@ impl BitfieldStruct {
         let constructor_definition = self.generate_constructor_unpacked(config);
         let specifier_impl = self.generate_specifier_impl(config);
 
-        // let byte_conversion_impls = self.expand_byte_conversion_impls(config);
-        // let byte_update_impls = self.expand_byte_update_impls(config);
+        let byte_conversion_impls = self.generate_byte_conversion_impls_unpacked(config);
+        let byte_update_impls = self.generate_byte_update_impls_unpacked(config);
         let getters_and_setters = self.generate_getters_and_setters_unpacked(config);
         let from_into_impl = self.generate_to_from_repr_unpacked(config);
         // let bytes_check = self.expand_optional_bytes_check(config);
@@ -29,8 +29,8 @@ impl BitfieldStruct {
             #struct_definition
             #check_filled
             #constructor_definition
-            // #byte_conversion_impls
-            // #byte_update_impls
+            #byte_conversion_impls
+            #byte_update_impls
             #getters_and_setters
             #specifier_impl
             #from_into_impl
@@ -58,6 +58,121 @@ impl BitfieldStruct {
                     Self {
                         #( #field_names: <#field_types as ::modular_bitfield::Specifier>::from_bytes(0).expect("Failed to initialise field"), )*
                     }
+                }
+            }
+        )
+    }
+
+    /// Generates routines to allow conversion from and to bytes for the `#[bitfield]` struct.
+    fn generate_byte_conversion_impls_unpacked(&self, config: &Config) -> TokenStream2 {
+        let span = self.item_struct.span();
+        let ident = &self.item_struct.ident;
+        let size = self.generate_target_or_actual_bitfield_size(config);
+        let next_divisible_by_8 = Self::next_divisible_by_8(&size);
+        let repr = self.get_repr_or_bits(config);
+        let repr_type = repr.into_quote();
+
+        let from_bytes = match config.filled_enabled() {
+            true => {
+                quote_spanned!(span=>
+                    /// Converts the given bytes directly into the bitfield struct.
+                    ///
+                    /// Expects Little Endian byte order.
+                    #[inline]
+                    #[allow(clippy::identity_op)]
+                    pub const fn from_le_bytes(bytes: [u8; #next_divisible_by_8 / 8usize]) -> Self {
+                        let value = #repr_type::from_le_bytes(bytes);
+                        value.into()
+                    }
+                )
+            }
+            false => {
+                quote_spanned!(span=>
+                    /// Converts the given bytes directly into the bitfield struct.
+                    ///
+                    /// # Errors
+                    ///
+                    /// If the given bytes contain bits at positions that are undefined for `Self`.
+                    #[inline]
+                    #[allow(clippy::identity_op)]
+                    pub fn from_le_bytes(
+                        bytes: [u8; #next_divisible_by_8 / 8usize]
+                    ) -> ::core::result::Result<Self, ::modular_bitfield::error::OutOfBounds> {
+                        if bytes[(#next_divisible_by_8 / 8usize) - 1] >= (0x01 << (8 - (#next_divisible_by_8 - #size))) {
+                            return ::core::result::Result::Err(::modular_bitfield::error::OutOfBounds)
+                        }
+
+                        let value = #repr_type::from_le_bytes(bytes);
+
+                        ::core::result::Result::Ok(value.into())
+                    }
+                )
+            }
+        };
+
+        quote_spanned!(span=>
+            impl #ident {
+                /// Returns the underlying bits.
+                ///
+                /// # Layout
+                ///
+                /// Returns a little endian based layout.
+                /// The returned byte array is laid out in the same way as described
+                /// [here](https://docs.rs/modular-bitfield/#generated-structure).
+                #[inline]
+                #[allow(clippy::identity_op)]
+                pub const fn to_le_bytes(self) -> [u8; #next_divisible_by_8 / 8usize] {
+                    let value: #repr_type = self.into();
+                    value.to_le_bytes()
+                }
+
+                #from_bytes
+            }
+        )
+    }
+
+    fn generate_byte_update_impls_unpacked(&self, config: &Config) -> TokenStream2 {
+        let span = self.item_struct.span();
+        let ident = &self.item_struct.ident;
+        let size = self.generate_target_or_actual_bitfield_size(config);
+        let next_divisible_by_8 = Self::next_divisible_by_8(&size);
+        let repr = self.get_repr_or_bits(config);
+        let repr_type = repr.into_quote();
+
+        quote_spanned!(span=>
+            impl #ident {
+                /// Updates the underlying byte.
+                ///
+                /// # Layout
+                ///
+                /// This is based on Little Endian indexing, aka, least significant byte is at index 0.
+                #[inline]
+                #[allow(clippy::identity_op)]
+                pub fn update_byte_le(&mut self, byte: usize, value: u8) {
+                    let int_val_self: #repr_type = (*self).into();
+                    let mut value_le = int_val_self.to_le_bytes();
+
+                    value_le[byte] = value;
+
+                    let new_value = #repr_type::from_le_bytes(value_le);
+                    *self = new_value.into();
+                }
+
+                /// Updates the underlying byte.
+                ///
+                /// # Layout
+                ///
+                /// This is based on Big Endian indexing, aka, most significant byte is at index 0.
+                #[inline]
+                #[allow(clippy::identity_op)]
+                pub fn update_byte_be(&mut self, byte: usize, value: u8) {
+                    let int_val_self: #repr_type = (*self).into();
+                    let mut value_le = int_val_self.to_le_bytes();
+
+                    value_le[(#next_divisible_by_8 / 8usize - 1 - byte)] = value;
+
+                    let new_value = #repr_type::from_le_bytes(value_le);
+                    *self = new_value.into();
                 }
             }
         )

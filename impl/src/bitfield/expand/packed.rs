@@ -17,7 +17,7 @@ impl BitfieldStruct {
         let specifier_impl = self.generate_specifier_impl(config);
 
         let byte_conversion_impls = self.expand_byte_conversion_impls(config);
-        let byte_update_impls = self.expand_byte_update_impls(config);
+        let byte_update_impls = self.generate_byte_update_impls(config);
         let getters_and_setters = self.expand_getters_and_setters(config);
         let repr_impls_and_checks = self.expand_repr_from_impls_and_checks(config);
         let debug_impl = self.generate_debug_impl(config);
@@ -227,7 +227,7 @@ impl BitfieldStruct {
                     /// Converts the given bytes directly into the bitfield struct.
                     #[inline]
                     #[allow(clippy::identity_op)]
-                    pub const fn from_bytes(bytes: [u8; #next_divisible_by_8 / 8usize]) -> Self {
+                    pub const fn from_le_bytes(bytes: [u8; #next_divisible_by_8 / 8usize]) -> Self {
                         Self { bytes }
                     }
                 )
@@ -241,7 +241,7 @@ impl BitfieldStruct {
                     /// If the given bytes contain bits at positions that are undefined for `Self`.
                     #[inline]
                     #[allow(clippy::identity_op)]
-                    pub fn from_bytes(
+                    pub fn from_le_bytes(
                         bytes: [u8; #next_divisible_by_8 / 8usize]
                     ) -> ::core::result::Result<Self, ::modular_bitfield::error::OutOfBounds> {
                         if bytes[(#next_divisible_by_8 / 8usize) - 1] >= (0x01 << (8 - (#next_divisible_by_8 - #size))) {
@@ -263,7 +263,7 @@ impl BitfieldStruct {
                 /// [here](https://docs.rs/modular-bitfield/#generated-structure).
                 #[inline]
                 #[allow(clippy::identity_op)]
-                pub const fn into_bytes(self) -> [u8; #next_divisible_by_8 / 8usize] {
+                pub const fn to_le_bytes(self) -> [u8; #next_divisible_by_8 / 8usize] {
                     self.bytes
                 }
 
@@ -272,7 +272,7 @@ impl BitfieldStruct {
         )
     }
 
-    fn expand_byte_update_impls(&self, config: &Config) -> TokenStream2 {
+    fn generate_byte_update_impls(&self, config: &Config) -> TokenStream2 {
         let span = self.item_struct.span();
         let ident = &self.item_struct.ident;
         let size = self.generate_target_or_actual_bitfield_size(config);
