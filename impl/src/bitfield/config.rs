@@ -15,7 +15,6 @@ use syn::parse::Result;
 /// The configuration for the `#[bitfield]` macro.
 #[derive(Default)]
 pub struct Config {
-    pub bytes: Option<ConfigValue<usize>>,
     pub bits: Option<ConfigValue<usize>>,
     pub filled: Option<ConfigValue<bool>>,
     pub packed: Option<ConfigValue<bool>>,
@@ -138,33 +137,6 @@ impl Config {
         Ok(())
     }
 
-    fn ensure_no_bits_and_bytes_conflict(&self) -> Result<()> {
-        if let (Some(bits), Some(bytes)) = (self.bits.as_ref(), self.bytes.as_ref()) {
-            fn next_div_by_8(value: usize) -> usize {
-                ((value.saturating_sub(1) / 8) + 1) * 8
-            }
-            if next_div_by_8(bits.value) / 8 != bytes.value {
-                return Err(format_err!(
-                    Span::call_site(),
-                    "encountered conflicting `bits = {}` and `bytes = {}` parameters",
-                    bits.value,
-                    bytes.value,
-                )
-                .into_combine(format_err!(
-                    bits.span,
-                    "conflicting `bits = {}` here",
-                    bits.value
-                ))
-                .into_combine(format_err!(
-                    bytes.span,
-                    "conflicting `bytes = {}` here",
-                    bytes.value,
-                )))
-            }
-        }
-        Ok(())
-    }
-
     pub fn ensure_no_repr_and_filled_conflict(&self) -> Result<()> {
         if let (Some(repr), Some(filled @ ConfigValue { value: false, .. })) =
             (self.repr.as_ref(), self.filled.as_ref())
@@ -192,7 +164,6 @@ impl Config {
     /// Ensures that there are no conflicting configuration parameters.
     pub fn ensure_no_conflicts(&self) -> Result<()> {
         self.ensure_no_bits_and_repr_conflict()?;
-        self.ensure_no_bits_and_bytes_conflict()?;
         self.ensure_no_repr_and_filled_conflict()?;
         Ok(())
     }
@@ -221,21 +192,6 @@ impl Config {
             "previous `{}` parameter here",
             name
         ))
-    }
-
-    /// Sets the `bytes: int` #[bitfield] parameter to the given value.
-    ///
-    /// # Errors
-    ///
-    /// If the specifier has already been set.
-    pub fn bytes(&mut self, value: usize, span: Span) -> Result<()> {
-        match &self.bytes {
-            Some(previous) => {
-                return Err(Self::raise_duplicate_error("bytes", span, previous))
-            }
-            None => self.bytes = Some(ConfigValue::new(value, span)),
-        }
-        Ok(())
     }
 
     /// Sets the `bits: int` #[bitfield] parameter to the given value.

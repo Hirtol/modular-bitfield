@@ -83,11 +83,6 @@ impl Config {
     }
 
     /// Feeds a `bytes: int` parameter to the `#[bitfield]` configuration.
-    fn feed_bytes_param(&mut self, name_value: syn::MetaNameValue) -> Result<()> {
-        Self::feed_int_param(name_value, "bytes", |value, span| self.bytes(value, span))
-    }
-
-    /// Feeds a `bytes: int` parameter to the `#[bitfield]` configuration.
     fn feed_bits_param(&mut self, name_value: syn::MetaNameValue) -> Result<()> {
         Self::feed_int_param(name_value, "bits", |value, span| self.bits(value, span))
     }
@@ -138,9 +133,7 @@ impl Config {
                 syn::NestedMeta::Meta(meta) => {
                     match meta {
                         syn::Meta::NameValue(name_value) => {
-                            if name_value.path.is_ident("bytes") {
-                                self.feed_bytes_param(name_value)?;
-                            } else if name_value.path.is_ident("bits") {
+                            if name_value.path.is_ident("bits") {
                                 self.feed_bits_param(name_value)?;
                             } else if name_value.path.is_ident("filled") {
                                 self.feed_filled_param(name_value)?;

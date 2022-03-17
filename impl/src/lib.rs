@@ -62,22 +62,6 @@ pub fn define_specifiers(input: TokenStream) -> TokenStream {
 ///
 /// The following parameters for the `#[bitfield]` macro are supported:
 ///
-/// ## Parameter: `bytes = N`
-///
-/// This ensures at compilation time that the resulting `#[bitfield]` struct consists of
-/// exactly `N` bytes. Yield a compilation error if this does not hold true.
-///
-/// ### Example
-///
-/// ```
-/// # use modular_bitfield::prelude::*;
-/// #[bitfield(bytes = 2)]
-/// pub struct SingedInt {
-///     sign: bool, //  1 bit
-///     value: B15, // 15 bits
-/// }
-/// ```
-///
 /// ## Parameter: `filled: bool`
 ///
 /// If `filled` is `true` ensures that the `#[bitfield]` struct defines all bits and
@@ -98,11 +82,36 @@ pub fn define_specifiers(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
+/// ## Parameter: `packed: bool`
+///
+/// If `packed` is `true` ensures that the `#[bitfield]` struct is packed.
+/// This means that the size of the struct is the equal to `std::mem::size_of::<u8|u16|u32|u64|u128>()` depending
+/// on the specified number of `bits = N`.
+///
+/// If `packed` is `false` the `#[bitfield]` is instead laid out exactly as specified by the struct, but its external interface
+/// acts the same as if it was a true bitfield. This layout is preferable for performance when you have few instances of a
+/// particular struct, but a lot of accesses to the struct's fields. One can get the bitwise representation using the `into()` or `into_bytes()` methods.
+///
+/// The default value is: `true`
+///
+/// ### Example
+///
+/// ```
+/// # use modular_bitfield::prelude::*;
+/// #[bitfield(packed = false)]
+/// pub struct Package {
+///     is_received: bool, // Actual struct contains a bool (1 byte)
+///     is_alive: bool,    // Actual struct contains a bool (1 byte)
+///     status: B2,        // Actual struct contains a u8 (1 byte)
+/// }
+/// ```
+///
 /// ## Parameter: `bits = N`
 ///
 /// With the `bits: int` parameter it is possible to control the targeted bit width of
-/// a `#[bitfield]` annoated struct. Using `bits = N` guarantees that the resulting bitfield
-/// struct will have a bit width of exactly `N`.
+/// a `#[bitfield]` annotated struct. Using `bits = N` guarantees that the resulting bitfield
+/// struct will have a bit width of exactly `N`. A `From` and `Into` implementation is generated for the closest integer type that fits
+/// the bit width.
 ///
 /// ### Example 1
 ///

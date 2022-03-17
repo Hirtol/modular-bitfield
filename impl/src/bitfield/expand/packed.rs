@@ -19,7 +19,6 @@ impl BitfieldStruct {
         let byte_conversion_impls = self.expand_byte_conversion_impls(config);
         let byte_update_impls = self.expand_byte_update_impls(config);
         let getters_and_setters = self.expand_getters_and_setters(config);
-        let bytes_check = self.expand_optional_bytes_check(config);
         let repr_impls_and_checks = self.expand_repr_from_impls_and_checks(config);
         let debug_impl = self.generate_debug_impl(config);
 
@@ -31,7 +30,6 @@ impl BitfieldStruct {
             #byte_update_impls
             #getters_and_setters
             #specifier_impl
-            #bytes_check
             #repr_impls_and_checks
             #debug_impl
         )
@@ -176,24 +174,6 @@ impl BitfieldStruct {
                 }
             }
         )
-    }
-
-    /// Generates the compile-time assertion if the optional `byte` parameter has been set.
-    fn expand_optional_bytes_check(&self, config: &Config) -> Option<TokenStream2> {
-        let ident = &self.item_struct.ident;
-        config.bytes.as_ref().map(|config| {
-            let bytes = config.value;
-            quote_spanned!(config.span=>
-                const _: () = {
-                    struct ExpectedBytes { __bf_unused: [::core::primitive::u8; #bytes] };
-
-                    ::modular_bitfield::private::static_assertions::assert_eq_size!(
-                        ExpectedBytes,
-                        #ident
-                    );
-                };
-            )
-        })
     }
 
     /// Generates `From` impls for a `#[repr(uN)]` annotated #[bitfield] struct.
