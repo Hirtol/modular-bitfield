@@ -23,11 +23,10 @@ impl PopBits for PopBuffer<u8> {
     #[inline]
     fn pop_bits(&mut self, amount: u32) -> u8 {
         let Self { bytes } = self;
-        let orig_ones = bytes.count_ones();
-        debug_assert!(1 <= amount && amount <= 8);
+
         let res = *bytes & ((0x01_u16.wrapping_shl(amount)).wrapping_sub(1) as u8);
         *bytes = bytes.checked_shr(amount).unwrap_or(0);
-        debug_assert_eq!(res.count_ones() + bytes.count_ones(), orig_ones);
+
         res
     }
 }
@@ -41,12 +40,11 @@ macro_rules! impl_pop_bits {
                 #[inline]
                 fn pop_bits(&mut self, amount: u32) -> u8 {
                     let Self { bytes } = self;
-                    let orig_ones = bytes.count_ones();
-                    debug_assert!(1 <= amount && amount <= 8);
+
                     let bitmask = 0xFF >> (8 - amount);
                     let res = (*bytes & bitmask) as u8;
                     *bytes = bytes.checked_shr(amount).unwrap_or(0);
-                    debug_assert_eq!(res.count_ones() + bytes.count_ones(), orig_ones);
+
                     res
                 }
             }
@@ -84,11 +82,9 @@ macro_rules! impl_push_bits {
                 #[inline]
                 fn push_bits(&mut self, amount: u32, bits: u8) {
                     let Self { bytes } = self;
-                    let orig_ones = bytes.count_ones();
-                    debug_assert!(1 <= amount && amount <= 8);
+
                     let bitmask = 0xFF >> (8 - amount as u8);
                     *bytes = bytes.wrapping_shl(amount) | ((bits & bitmask) as $type);
-                    debug_assert_eq!((bits & bitmask).count_ones() + orig_ones, bytes.count_ones());
                 }
             }
         )+
