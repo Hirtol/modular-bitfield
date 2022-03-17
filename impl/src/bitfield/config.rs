@@ -8,6 +8,8 @@ use std::collections::{
     hash_map::Entry,
     HashMap,
 };
+use quote::quote;
+use syn::__private::TokenStream2;
 use syn::parse::Result;
 
 /// The configuration for the `#[bitfield]` macro.
@@ -28,18 +30,30 @@ pub struct Config {
 #[derive(Copy, Clone)]
 pub enum ReprKind {
     /// Found a `#[repr(u8)]` annotation.
-    U8,
+    U8 = 8,
     /// Found a `#[repr(u16)]` annotation.
-    U16,
+    U16 = 16,
     /// Found a `#[repr(u32)]` annotation.
-    U32,
+    U32 = 32,
     /// Found a `#[repr(u64)]` annotation.
-    U64,
+    U64 = 64,
     /// Found a `#[repr(u128)]` annotation.
-    U128,
+    U128 = 128,
 }
 
 impl ReprKind {
+    /// Transforms the provided bits count into the closest fitting [ReprKind].
+    pub fn from_closest(bits: u8) -> Self {
+        match bits {
+            0..=8 => Self::U8,
+            9..=16 => Self::U16,
+            17..=32 => Self::U32,
+            33..=64 => Self::U64,
+            65..=128 => Self::U128,
+            _ => panic!("Invalid bitfield size: {}", bits),
+        }
+    }
+
     /// Returns the amount of bits required to have for the bitfield to satisfy the `#[repr(uN)]`.
     pub fn bits(self) -> usize {
         match self {
@@ -48,6 +62,17 @@ impl ReprKind {
             Self::U32 => 32,
             Self::U64 => 64,
             Self::U128 => 128,
+        }
+    }
+
+    /// Returns the quote representation
+    pub fn into_quote(self) -> TokenStream2 {
+        match self {
+            ReprKind::U8 => quote! { ::core::primitive::u8 },
+            ReprKind::U16 => quote! { ::core::primitive::u16 },
+            ReprKind::U32 => quote! { ::core::primitive::u32 },
+            ReprKind::U64 => quote! { ::core::primitive::u64 },
+            ReprKind::U128 => quote! { ::core::primitive::u128 },
         }
     }
 }

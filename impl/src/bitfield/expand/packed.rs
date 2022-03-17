@@ -202,13 +202,7 @@ impl BitfieldStruct {
         config.repr.as_ref().map(|repr| {
             let kind = &repr.value;
             let span = repr.span;
-            let prim = match kind {
-                ReprKind::U8 => quote! { ::core::primitive::u8 },
-                ReprKind::U16 => quote! { ::core::primitive::u16 },
-                ReprKind::U32 => quote! { ::core::primitive::u32 },
-                ReprKind::U64 => quote! { ::core::primitive::u64 },
-                ReprKind::U128 => quote! { ::core::primitive::u128 },
-            };
+            let prim = kind.into_quote();
             let actual_bits = self.generate_target_or_actual_bitfield_size(config);
             let trait_check_ident = match kind {
                 ReprKind::U8 => quote! { IsU8Compatible },

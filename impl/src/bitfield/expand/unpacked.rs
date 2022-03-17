@@ -1,11 +1,12 @@
-use quote::{format_ident, quote, quote_spanned};
-use syn::{Token, Type};
+use quote::{format_ident, quote_spanned};
+use syn::{Expr, Token};
 use syn::__private::TokenStream2;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
+use syn::token::{Add};
 
 use crate::bitfield::BitfieldStruct;
-use crate::bitfield::config::Config;
+use crate::bitfield::config::{Config, ReprKind};
 use crate::bitfield::field_info::FieldInfo;
 
 impl BitfieldStruct {
@@ -20,9 +21,9 @@ impl BitfieldStruct {
         // let byte_conversion_impls = self.expand_byte_conversion_impls(config);
         // let byte_update_impls = self.expand_byte_update_impls(config);
         let getters_and_setters = self.generate_getters_and_setters_unpacked(config);
+        let from_into_impl = self.generate_to_from_repr_unpacked(config);
         // let bytes_check = self.expand_optional_bytes_check(config);
         // let repr_impls_and_checks = self.expand_repr_from_impls_and_checks(config);
-        // let debug_impl = self.generate_debug_impl(config);
 
         quote_spanned!(span=>
             #struct_definition
@@ -32,9 +33,9 @@ impl BitfieldStruct {
             // #byte_update_impls
             #getters_and_setters
             #specifier_impl
+            #from_into_impl
             // #bytes_check
             // #repr_impls_and_checks
-            // #debug_impl
         )
     }
 
@@ -183,6 +184,7 @@ impl BitfieldStruct {
 
         let getters = quote_spanned!(span=>
             #[doc = #getter_docs]
+            #[allow(dead_code)]
             #[inline]
             #( #retained_attrs )*
             #vis const fn #get_ident(&self) -> <#ty as ::modular_bitfield::Specifier>::InOut {
@@ -253,5 +255,110 @@ impl BitfieldStruct {
             }
         );
         Some(setters)
+    }
+
+    fn generate_to_from_repr_unpacked(&self, config: &Config) -> TokenStream2 {
+        let span = self.item_struct.span();
+        let ident = &self.item_struct.ident;
+        let mut offset = {
+            let mut offset = Punctuated::<syn::Expr, Token![+]>::new();
+            offset.push(syn::parse_quote! { 0usize });
+            offset
+        };
+
+        let mut into_impls = Vec::new();
+        let mut from_impls = Vec::new();
+
+        let repr = self.get_repr_or_bits(config);
+        let prim = repr.into_quote();
+
+        let input_ident = quote_spanned! {span=> __bf_input_};
+        let result_ident = quote_spanned! {span=> __bf_};
+
+        for field in self.field_infos(config) {
+            let ty = &field.field.ty;
+
+            from_impls.push(self.expand_from_for_field(&mut offset, &field, &input_ident));
+            into_impls.push(self.expand_into_for_field(&mut offset, &field, &prim, &input_ident, &result_ident));
+
+
+            offset.push(syn::parse_quote! { <#ty as ::modular_bitfield::Specifier>::BITS });
+        }
+
+        quote_spanned!(span=>
+                impl ::core::convert::From<#prim> for #ident
+                {
+                    #[inline]
+                    #[allow(clippy::identity_op)]
+                    fn from(#input_ident: #prim) -> Self {
+                        Self {
+                            #( #from_impls )*
+                        }
+                    }
+                }
+
+                impl ::core::convert::From<#ident> for #prim
+                {
+                    #[inline]
+                    #[allow(clippy::identity_op)]
+                    fn from(#input_ident: #ident) -> Self {
+                        let mut #result_ident: #prim = 0;
+
+                        #( #into_impls )*
+
+                        #result_ident
+                    }
+                }
+            )
+    }
+
+    fn expand_into_for_field(&self, offset: &mut Punctuated<Expr, Add>, info: &FieldInfo<'_>, primitive: &TokenStream2, input_ident: &TokenStream2, result_ident: &TokenStream2) -> Option<TokenStream2> {
+        let FieldInfo {
+            index: _, field,
+            config, ..
+        } = &info;
+        let span = field.span();
+        let ident = &field.ident;
+        let ty = &field.ty;
+
+        if config.skip_getters() {
+            None
+        } else {
+            let result = quote_spanned! {span=>
+                #result_ident |= (<#ty as ::modular_bitfield::Specifier>::into_bytes(#input_ident.#ident).unwrap() as #primitive) << (#offset);
+            };
+
+            Some(result)
+        }
+    }
+
+    fn expand_from_for_field(&self, offset: &mut Punctuated<Expr, Add>, info: &FieldInfo<'_>, input_ident: &TokenStream2) -> Option<TokenStream2> {
+        let FieldInfo {
+            index: _, field,
+            config, ..
+        } = &info;
+        let span = field.span();
+        let ident = &field.ident;
+        let ty = &field.ty;
+
+        if config.skip_setters() {
+            None
+        } else {
+            let result = quote_spanned! {span=>
+                #ident: <#ty as ::modular_bitfield::Specifier>::from_bytes(((#input_ident >> (#offset)) & ((1 << (<#ty as ::modular_bitfield::Specifier>::BITS - #offset + 1)) - 1)) as <#ty as ::modular_bitfield::Specifier>::Bytes).unwrap(),
+            };
+
+            Some(result)
+        }
+    }
+
+    fn get_repr_or_bits(&self, config: &Config) -> ReprKind {
+        if let Some(rep) = config.repr.as_ref() {
+            rep.value
+        } else if let Some(bits) = config.bits.as_ref() {
+            ReprKind::from_closest(bits.value as u8)
+        } else {
+            panic!("No repr or bits specified for {}", self.item_struct.ident);
+        }
     }
 }

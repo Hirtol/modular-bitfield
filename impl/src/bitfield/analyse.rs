@@ -119,7 +119,7 @@ impl BitfieldStruct {
             let meta_span = nested_meta.span();
             match nested_meta {
                 syn::NestedMeta::Meta(syn::Meta::Path(path)) => {
-                    if path.is_ident("Debug") {
+                    if path.is_ident("Debug") && config.packed_enabled() {
                         config.derive_debug(meta_span)?;
                     } else if path.is_ident("BitfieldSpecifier") {
                         config.derive_specifier(meta_span)?;
