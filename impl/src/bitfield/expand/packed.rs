@@ -278,8 +278,8 @@ impl BitfieldStruct {
                 ///
                 /// # Layout
                 ///
-                /// Returns a little endian based layout
-                /// The returned byte array is layed out in the same way as described
+                /// Returns a little endian based layout.
+                /// The returned byte array is laid out in the same way as described
                 /// [here](https://docs.rs/modular-bitfield/#generated-structure).
                 #[inline]
                 #[allow(clippy::identity_op)]

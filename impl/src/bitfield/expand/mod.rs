@@ -1,21 +1,17 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{
-    format_ident,
     quote,
     quote_spanned,
 };
 use syn::{
     self,
-    punctuated::Punctuated,
     spanned::Spanned as _,
-    Token,
 };
 
 use super::{
     BitfieldStruct,
     config::{
         Config,
-        ReprKind,
     },
     field_info::FieldInfo,
 };
