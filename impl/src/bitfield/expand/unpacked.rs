@@ -79,7 +79,7 @@ impl BitfieldStruct {
                     /// Expects Little Endian byte order.
                     #[inline(always)]
                     #[allow(clippy::identity_op)]
-                    pub const fn from_le_bytes(bytes: [u8; #next_divisible_by_8 / 8usize]) -> Self {
+                    pub fn from_le_bytes(bytes: [u8; #next_divisible_by_8 / 8usize]) -> Self {
                         let value = #repr_type::from_le_bytes(bytes);
                         value.into()
                     }
@@ -120,7 +120,7 @@ impl BitfieldStruct {
                 /// [here](https://docs.rs/modular-bitfield/#generated-structure).
                 #[inline(always)]
                 #[allow(clippy::identity_op)]
-                pub const fn to_le_bytes(self) -> [u8; #next_divisible_by_8 / 8usize] {
+                pub fn to_le_bytes(self) -> [u8; #next_divisible_by_8 / 8usize] {
                     let value: #repr_type = self.into();
                     value.to_le_bytes()
                 }
